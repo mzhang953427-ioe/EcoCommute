@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoCommute</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div class="top-mask"></div>
+
+  <nav class="glass-nav">
+    <div class="nav-brand" style="cursor: pointer;" onclick="switchPage('my-commute')">EcoCommute</div>
+    <button type="button" class="hamburger-menu" onclick="window.toggleMobileMenu()" aria-label="Toggle Navigation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+    <div class="nav-links" id="mobile-nav-links">
+      <button type="button" class="nav-btn active" data-target="my-commute">My Commute</button>
+      <button type="button" class="nav-btn" data-target="alternatives">Alternative Commutes</button>
+      <button type="button" class="nav-btn" data-target="our-school">My School</button>
+      <button type="button" class="nav-btn" data-target="methodology">Methodology</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    
+    <section id="my-commute" class="page-section active">
+      <div class="header-section">
+        <h1>Calculate Your Commute</h1>
+        <p>Build your commute section by section to estimate your carbon footprint, travel time and air quality exposure.</p>
+      </div>
+
+      <div class="card">
+        <h2>Commute Sections</h2>
+        <div id="sections-container">
+        </div>
+        <button type="button" id="add-section-btn" class="btn">+ Add Another Section</button>
+        <p id="section-error" class="hidden" style="font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0; color: var(--danger-color); font-weight: 700; text-align: left;">Please completely fill out all of your commute sections before calculating your commute.</p>
+      </div>
+
+      <div class="card">
+        <h2>Commute Details</h2>
+        <div class="details-container">
+          <div class="journey-section">
+            <h3 class="section-title">Commute Frequency</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="days-per-week">Days Travelled per Week</label>
+                <input type="number" id="days-per-week" value="5" min="1" max="7" step="1" 
+                       onkeypress="return event.charCode >= 48 && event.charCode <= 57" 
+                       oninput="if(this.value > 7) this.value = 7; if(this.value !== '' && this.value < 1) this.value = 1;">
+              </div>
+              <div class="form-group">
+                <label for="weeks-per-year">Weeks Travelled per Year</label>
+                <input type="number" id="weeks-per-year" value="36" min="1" max="52" step="1" 
+                       onkeypress="return event.charCode >= 48 && event.charCode <= 57" 
+                       oninput="if(this.value > 52) this.value = 52; if(this.value !== '' && this.value < 1) this.value = 1;">
+              </div>
+            </div>
+            <p id="freq-error" class="hidden" style="font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0; color: var(--danger-color); font-weight: 700; text-align: left;">Please enter a valid value for your Commute Frequency before calculating.</p>
+          </div>
+
+          <div class="journey-section">
+            <h3 class="section-title">Return Commute</h3>
+            <div class="form-row">
+              <label class="checkbox-container">
+                <input type="checkbox" id="cb-return-journey" checked onchange="window.toggleReturnCommute()">
+                <span class="cb-label" style="font-weight: bold;">Is your return commute home the same as your commute to school?</span>
+              </label>
+            </div>
+            <div id="return-commute-box" class="hidden" style="margin-top: 2.5rem;">
+              <h2>Return Commute Sections</h2>
+              <div id="return-sections-container">
+              </div>
+              <button type="button" id="add-return-section-btn" class="btn">+ Add Another Section</button>
+              <p id="return-section-error" class="hidden" style="font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0; color: var(--danger-color); font-weight: 700; text-align: left;">Please completely fill out all of your commute sections before calculating your commute.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Air Quality Exposure</h2>
+        <div class="aq-container">
+          
+          <div class="aq-factor">
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-heavy-traffic">
+              <span class="cb-label">Do you spend time near traffic?</span>
+            </label>
+            <div class="slider-wrapper hidden" id="wrap-heavy-traffic">
+              <span class="slider-val">1</span>
+              <input type="range" class="custom-slider" id="aq-heavy-traffic" min="1" max="10" value="1">
+              <span class="slider-val">10</span>
+            </div>
+          </div>
+
+          <div class="aq-factor">
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-waiting">
+              <span class="cb-label">Do you wait for transport near traffic?</span>
+            </label>
+            <div class="slider-wrapper hidden" id="wrap-waiting">
+              <span class="slider-val">1</span>
+              <input type="range" class="custom-slider" id="aq-waiting" min="1" max="10" value="1">
+              <span class="slider-val">10</span>
+            </div>
+          </div>
+
+          <div class="aq-factor">
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-busy-roads">
+              <span class="cb-label">Is most of your route along busy roads?</span>
+            </label>
+            <div class="slider-wrapper hidden" id="wrap-busy-roads">
+              <span class="slider-val">1</span>
+              <input type="range" class="custom-slider" id="aq-busy-roads" min="1" max="10" value="1">
+              <span class="slider-val">10</span>
+            </div>
+          </div>
+
+          <div class="aq-factor">
+            <label class="checkbox-container">
+              <input type="checkbox" id="cb-perceived">
+              <span class="cb-label">Do you perceive high pollutant and traffic exhaust exposure?</span>
+            </label>
+            <div class="slider-wrapper hidden" id="wrap-perceived">
+              <span class="slider-val">1</span>
+              <input type="range" class="custom-slider" id="aq-perceived" min="1" max="10" value="1">
+              <span class="slider-val">10</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button type="button" id="calculate-btn" class="btn large-btn">Calculate Commute</button>
+        <button type="button" id="show-alt-btn" class="btn large-btn hidden">Show Alternative Commutes</button>
+        <button type="button" id="submit-btn" class="btn large-btn hidden">Submit Commute</button>
+        <button type="button" id="reset-btn" class="btn large-btn">Reset</button>
+      </div>
+
+      <div id="results-dashboard" class="results-dashboard hidden">
+        <h2>Your Commute Summary</h2>
+        <div class="results-grid">
+          <div class="result-box">
+            <h3 class="summary-title">Distance</h3>
+            <p class="fw-bold">Daily: <span id="res-dist-oneway">0</span> km</p>
+            <p>Annual: <span id="res-dist-annual">0</span> km</p>
+          </div>
+          <div class="result-box">
+            <h3 class="summary-title">Travel Time</h3>
+            <p class="fw-bold">Daily: <span id="res-time-oneway">0 minutes</span></p>
+            <p>Annual: <span id="res-time-annual">0</span> hours</p>
+          </div>
+          <div class="result-box">
+            <h3 class="summary-title">Carbon Footprint</h3>
+            <p class="highlight-val-light"><span id="res-carbon-annual">0</span> kg CO₂</p>
+            <p class="sm-text fw-bold">Estimated annual carbon footprint based on typical vehicle emissions data in Dublin</p>
+          </div>
+          <div class="result-box">
+            <h3 class="summary-title">Air Quality Exposure</h3>
+            <div class="aq-score-wrapper">
+              <p class="highlight-val-light"><span id="res-aq-score">0</span> / 100</p>
+              <div class="aq-badge" id="res-aq-level">-</div>
+            </div>
+            <p class="sm-text fw-bold" id="res-aq-desc">-</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="alternatives" class="page-section hidden">
+      <div class="header-section">
+        <h1>Compare Alternative Commutes</h1>
+        <p>Explore more environmentally-friendly or faster options for each section of your commute, estimated with current Dublin data.</p>
+      </div>
+      
+      <div id="alternatives-warning" class="card">
+        <p class="text-black">Please calculate your commute on the <i>My Commute</i> page first to see alternative commutes.</p>
+      </div>
+
+      <div id="alternatives-content" class="hidden">
+        <div id="alt-sections-container">
+        </div>
+
+        <div class="card">
+          <h2>Your Alternative Commute Summary</h2>
+          <div class="results-grid">
+            <div class="result-box">
+              <h3 class="summary-title">Alternative Travel Time</h3>
+              <p class="highlight-val-light"><span id="alt-time-oneway">0</span></p>
+              <p id="alt-time-diff" class="fw-bold">-</p>
+            </div>
+            <div class="result-box">
+              <h3 class="summary-title">Alternative Carbon Footprint</h3>
+              <p class="highlight-val-light"><span id="alt-carbon-annual">0</span> kg CO₂</p>
+              <p id="alt-carbon-diff" class="fw-bold">-</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="our-school" class="page-section hidden">
+      <div class="header-section">
+        <h1><span id="dashboard-title-text">Your School</span> Dashboard</h1>
+        <p>Explore a real-time analytical dashboard of your school's commutes.</p>
+      </div>
+        
+      <div id="admin-panel" style="margin-top: 0; margin-bottom: 2.5rem; display: flex; flex-direction: column; gap: 1rem; align-items: flex-start; text-align: left;">
+        <div id="admin-cb-wrapper" style="height: 28px; display: flex; align-items: center;">
+          <label class="checkbox-container" style="height: auto; margin: 0;">
+            <input type="checkbox" id="cb-admin" onchange="window.toggleAdmin()">
+            <span class="cb-label" style="font-weight: normal;">Admin login</span>
+          </label>
+        </div>
+        <div id="admin-passcode-group" class="hidden" style="width: 100%; max-width: 450px;">
+          <div style="display: flex; gap: 1.5rem; width: 100%;">
+            <input type="password" id="admin-passcode" placeholder="Enter admin password" style="flex: 1;">
+            <button type="button" class="btn" onclick="window.checkAdmin()">Enter</button>
+          </div>
+          <p id="admin-error" class="hidden" style="font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0; color: var(--danger-color); font-weight: 700; text-align: left;">Incorrect password.</p>
+        </div>
+        <div id="admin-select-group" class="hidden" style="width: 100%; max-width: 350px; display: flex; flex-direction: column; gap: 0.8rem;">
+          <select id="admin-school-select" onchange="window.adminSchoolChange()" required></select>
+          <button type="button" id="exit-admin-btn" class="btn" onclick="window.exitAdmin()" style="align-self: flex-start;">Exit Admin Mode</button>
+        </div>
+      </div>
+
+      <div id="school-empty-state" class="card">
+        <p class="text-black">Please submit your commute on the <i>My Commute</i> page first with your School Code to see your school dashboard.</p>
+      </div>
+
+      <div id="school-analytics-content" class="hidden">
+        
+        <div class="results-grid">
+          <div class="result-box">
+            <h3 class="summary-title">Total Commute Submissions</h3>
+            <p class="highlight-val-light" id="school-total-students">Loading...</p>
+          </div>
+          <div class="result-box">
+            <h3 class="summary-title">Total Annual Emissions</h3>
+            <p class="highlight-val-light"><span id="school-current-co2">0</span> kg CO₂</p>
+          </div>
+        </div>
+
+        <div class="card chart-container">
+          <h2 style="margin-bottom: 1.5rem; text-align: left;">Commute Analytics</h2>
+          
+          <div class="charts-wrapper">
+            <div class="chart-block">
+              <h3 class="chart-title">Mode of Transport Share</h3>
+              <div class="canvas-wrapper">
+                <canvas id="schoolModeChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-block">
+               <h3 class="chart-title offset-bar">Annual Emissions by Mode of Transport</h3>
+              <div class="canvas-wrapper">
+                <canvas id="schoolEmissionsChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card chart-container">
+          <h2 style="margin-bottom: 1.5rem; text-align: left;">School Leaderboard</h2>
+          <div class="canvas-wrapper" style="height: 350px; margin-top: 2.5rem;">
+            <canvas id="schoolComparisonChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card" id="reduction-potential-card">
+          <h2>Reduction Potential</h2>
+          <div class="scenarios-wrapper" style="margin-top: 0;">
+            <h3 class="summary-title" style="display:none;">Scenarios</h3>
+            <ul id="school-scenarios" class="scenario-list">
+              <li>Loading metrics...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="methodology" class="page-section hidden">
+      <div class="header-section">
+        <h1>Methodology</h1>
+        <p>Learn about how your commute data is calculated.</p>
+      </div>
+      <div class="card methodology-content">
+        <h2>Distance and Time Conversions</h2>
+        <p>When you enter travel time, we estimate your distance using typical speeds for each mode of transport in Dublin, based on current conditions. Similarly, when you enter distance, we estimate your travel time. Cars and buses have a rush hour option if you are travelling during rush hour or on congested roads, and we take into account of this slower speed and potentially higher emissions, while DART and Luas maintain typical service speeds as indicated on their websites.</p>
+        <p>Speeds and times are rigourously calibrated to current Dublin data. We use a variety of methods, including official website reports, real-life experiments and Google Maps data to accurately estimate times and distances for each mode of transport.</p>
+        
+        <h2 class="mt-section">Air Quality Exposure Score</h2>
+        <p>This is a cumulative index from 0 to 100 based on:</p>
+        <ul>
+          <li><strong>Mode of Transport:</strong> Car, bus, DART and Luas generally have lower exposure to pollutants and traffic exhaust than walking and cycling.</li>
+          <li><strong>Traffic Environment:</strong> Proximity to busy roads or waiting at bus stops increases exposure to pollutants and traffic exhaust.</li>
+          <li><strong>Rush Hour:</strong> Rush hour commuting, especially walking and cycling, tend to increase exposure to pollutants and traffic exhaust, due to the volume of vehicles.</li>
+          <li><strong>Duration:</strong> Longer commute times increase exposure to pollutants and traffic exhaust.</li>
+          <li><strong>Perception:</strong> Personal, subjective ratings that reflect each individual's commute environment.</li>
+        </ul>
+
+        <h2 class="mt-section">Data Privacy</h2>
+        <p class="text-black">Your commute details are processed entirely in your browser using local logic and algorithms. No personal identifiable information (PII) or exact location coordinates are transmitted to external servers, ensuring complete privacy. Any data submitted to your school's dashboard is anonymous and not personally identified to any individual, and all such data is stored securely in our databases.</p>
+
+        <h2 class="mt-section">Alternative Routing Logic</h2>
+        <p class="text-black">Alternative route options are not reflective of your specific route, and although it automatically omits illogical alternatives, some modes of transport may not be available. It gives a comparison of travel time and carbon footprint based on available data, recalculating travel times using dynamic transit speeds based on whether your specific travel window overlaps with Dublin's congestion hours. Please ensure you research alternative route options carefully.</p>
+      </div>
+    </section>
+
+    <section id="contact" class="page-section hidden">
+      <div class="header-section">
+        <h1>Contact EcoCommute</h1>
+        <p>Have a question? Send us a message and we will help you out!</p>
+      </div>
+
+      <div class="card">
+        <h2>Our Purpose</h2>
+        <p>Climate change is one of the most important crisis facing our world today, and its devastating impacts have already been felt by communities around the world. Transport produces nearly 8 billion tonnes of CO₂ every year, when in fact, this number could be significantly lower if we truly understand the scale of the impact of daily commuting.</p>
+        <p style="margin-top: 1rem;">EcoCommute was developed to help students across Dublin to calculate their annual carbon footprint, and provides accurate estimates based on current data, with alternative route options available to help students to understand how their carbon footprint could be reduced. Students also have the option to see their school dashboard, enabling them to make informed decisions about their environmental impact.</p>
+      </div>
+
+      <div class="card">
+        <h2>Contact Details</h2>
+        <p class="text-black"><strong>Email:</strong> <a href="mailto:ecocommute.ie@outlook.com" style="color: var(--heading-color); font-weight: bold; text-decoration: none;">ecocommute.ie@outlook.com</a></p>
+        <p style="margin-top: 1rem;">Enquiries from students should be made using the form below.</p>
+      </div>
+      
+      <div class="card">
+        <h2>Send Us a Message</h2>
+        <form id="contact-form" name="contact" method="POST" data-netlify="true" class="details-container">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contact-name">Name</label>
+              <input type="text" id="contact-name" name="name" placeholder="Enter your name" required>
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email</label>
+              <input type="text" id="contact-email" name="email" placeholder="Enter your email" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contact-school">School</label>
+              <select id="contact-school" name="school" required>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="contact-subject">Enquiry Subject</label>
+              <select id="contact-subject" name="subject" required>
+                <option value="" disabled selected>Select your enquiry subject</option>
+                <option value="enquiries">Website Enquiries</option>
+                <option value="help">Help Needed</option>
+                <option value="issue">Report an Issue</option>
+                <option value="suggestions">Suggestions and Feedback</option>
+                <option value="privacy">Privacy Enquiry</option>
+                <option value="question">Environment Question</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="width: 100%;">
+              <label for="contact-details">Message</label>
+              <textarea id="contact-details" name="details" class="contact-input" placeholder="Enter your message" required></textarea>
+            </div>
+          </div>
+          <div style="margin-top: 0.4rem; margin-bottom: 0;">
+            <button type="submit" class="btn large-btn">Submit Message</button>
+          </div>
+        </form>
+        
+        <div id="contact-success-msg" class="hidden" style="text-align: center; padding: 2.5rem 1rem;">
+          <h2 style="text-align: center; border: none; margin-bottom: 1rem; padding: 0;">Message Sent Successfully!</h2>
+          <p class="text-black" style="margin-bottom: 2rem;">Thank you for your message. We will get back to you as soon as possible.</p>
+          <button type="button" class="btn" onclick="window.resetContactForm()">Send Another Message</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Acknowledgements</h2>
+         <p><b>Website Developer:</b> M. Zhang</p>
+         <p style="margin-top: 1rem;"><b>Layout and Designer:</b> J. Borza</p>
+         <p style="margin-top: 1rem;"><b>© M. Zhang, J. Borza, EcoCommute, 2026</b></p>
+      </div>
+      </div>
+    </section>
+
+  </main>
+
+  <button type="button" class="fab-contact" onclick="window.switchPage('contact')" aria-label="Contact Us">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+      <polyline points="22,6 12,13 2,6"></polyline>
+    </svg>
+  </button>
+
+  <div class="modal-overlay" id="school-modal" onclick="window.handleOverlayClick(event)">
+    <div class="card modal-card">
+      <h2>Submit Data</h2>
+      <p style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-main);">Submit your data anonymously to your school dashboard.</p>
+      
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label>Select your school</label>
+        <select id="modal-school-select" onchange="window.handleModalSchoolChange()" required></select>
+      </div>
+      
+      <div class="form-group hidden" id="modal-code-group">
+        <label>Your school code</label>
+        <input type="text" id="modal-school-code" placeholder="Enter school code">
+        <p id="modal-error" class="hidden" style="font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0; color: var(--danger-color); font-weight: 700; text-align: left;">Incorrect school code.</p>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 2.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="window.closeModal()">Cancel</button>
+        <button type="button" class="btn" id="modal-confirm-btn" onclick="window.confirmSubmission()">Submit Commute</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
